@@ -73,10 +73,10 @@ class ProductItemServiceTest {
                 60,"1920*1080 FullHd", "TN", interfaces, features
         );
         ProductItemRequestPart itemRequestPart = new ProductItemRequestPart(
-                4500,"HP25178", itemDetailsDto
+                4500,"2517ssd", "HP", itemDetailsDto
         );
         String response = underTest.addNewProductItem(itemRequestPart, multipartFiles);
-        String expected = "";
+
         assertThat(response).startsWith("ProductItem successfully saved to DB with id");
     }
 

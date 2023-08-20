@@ -23,6 +23,7 @@ public class ProductItemController {
     public List<ProductItemDto> getProductItemsList(){
         return productItemService.getAllProductItems();
     }
+
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public String addProductItem(
             @RequestPart("productItem")ProductItemRequestPart productItemRequestPart,

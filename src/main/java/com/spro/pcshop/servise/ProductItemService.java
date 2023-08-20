@@ -1,24 +1,23 @@
 package com.spro.pcshop.servise;
 
+import com.spro.pcshop.configs.UrlConfig;
 import com.spro.pcshop.dto.ItemDetailsDto;
 import com.spro.pcshop.dto.ProductItemDto;
 import com.spro.pcshop.dto.ProductItemRequestPart;
 import com.spro.pcshop.entity.*;
-import com.spro.pcshop.repository.ConnectionInterfaceRepository;
-import com.spro.pcshop.repository.FeatureRepository;
-import com.spro.pcshop.repository.ImageDataRepository;
-import com.spro.pcshop.repository.ProductItemRepository;
+import com.spro.pcshop.repository.*;
 import lombok.AllArgsConstructor;
+
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import static com.spro.pcshop.util.ImageUtils.compressImage;
 
@@ -26,10 +25,15 @@ import static com.spro.pcshop.util.ImageUtils.compressImage;
 @AllArgsConstructor
 @Service
 public class ProductItemService {
+
     private final ProductItemRepository productItemRepository;
     private final ImageDataRepository imageDataRepository;
     private final FeatureRepository featureRepository;
     private final ConnectionInterfaceRepository connectionInterfaceRepository;
+    private final BrandRepository brandRepository;
+    private final UrlConfig urlConfig;
+
+
 
     public List<ProductItemDto> getAllProductItems() {
 // get Product items with images, but without ItemDetails
@@ -45,7 +49,7 @@ public class ProductItemService {
 // save this object
         ItemDetailsDto itemDetailsDto = itemRequestPart.details();
         List<String> featuresStrings = itemDetailsDto.features();
-        if (featuresStrings == null){
+        if (featuresStrings == null) {
             featuresStrings = new ArrayList<>();
         }
         List<Feature> features = featuresStrings
@@ -57,7 +61,7 @@ public class ProductItemService {
         List<Feature> featuresWithIds = saveFeatures(features);
 
         List<String> interfacesStrings = itemDetailsDto.interfaces();
-        if(interfacesStrings == null){
+        if (interfacesStrings == null) {
             interfacesStrings = new ArrayList<>();
         }
         List<ConnectionInterface> interfaces = interfacesStrings
@@ -97,8 +101,19 @@ public class ProductItemService {
                 .interfaces(interfacesWithIds)
                 .build();
 
+
+        String brandName = itemRequestPart.brand();
+        Brand brand;
+        if (!brandRepository.existsByName(brandName)) {
+            brand = brandRepository.save(new Brand(brandName));
+        } else {
+            brand = brandRepository.findByName(brandName).orElseThrow();
+        }
+
+
         ProductItem productItem = ProductItem.builder()
-                .title(itemRequestPart.title())
+                .model(itemRequestPart.model())
+                .brand(brand)
                 .price(itemRequestPart.price())
                 .details(itemDetails)
                 .imageDataList(imageDataList)
@@ -144,12 +159,45 @@ public class ProductItemService {
                 .toList();
     }
 
+    private String assembleTitle(ProductItem productItem) {
+        StringBuilder title = new StringBuilder();
+        title.append("Монітор ")
+                .append(productItem.getDetails().getDiagonal() == 0 ? "" : (productItem.getDetails().getDiagonal() + "'"))
+                .append(productItem.getBrand() == null ? "" : productItem.getBrand().getName())
+                .append(productItem.getModel().isEmpty() ? "" : (" (" + productItem.getModel() + ")"))
+                .append(productItem.getDetails().getFrequency() == 0 ? "" : ("/ " + productItem.getDetails().getFrequency() + "Hz"))
+                .append(printFeatures(productItem.getDetails().getFeatures()));
+        return title.toString();
+    }
+
+    private String printFeatures(List<Feature> features) {
+        if (features.isEmpty()) {
+            return "";
+        }
+        StringBuilder featuresString = new StringBuilder();
+        features.forEach(feature -> {
+            featuresString.append(" / ")
+                    .append(feature.getName());
+        });
+        return featuresString.toString();
+    }
+
     private Function<ProductItem, ProductItemDto> productItemToDtoMapper() {
         return productItem -> new ProductItemDto(
                 productItem.getId(),
                 productItem.getPrice(),
-                productItem.getTitle(),
-                productItem.getImageDataList()
+                assembleTitle(productItem),
+                mapToUrls(productItem.getImageDataList())
         );
+    }
+
+    private List<String> mapToUrls(List<ImageData> imageDataList) {
+        return imageDataList.stream()
+                .map(imageData ->
+                        urlConfig.getHOST_URL() +
+                        ":"+urlConfig.getPORT()+
+                        urlConfig.getPATH_URL() +
+                        imageData.getId() +".jpg")
+                .toList();
     }
 }

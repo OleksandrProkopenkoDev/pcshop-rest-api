@@ -9,6 +9,6 @@ public record ProductItemDto(
         Long id,
         int price,
         String title,
-        List<ImageData> images
+        List<String> images
 ) {
 }
