@@ -15,4 +15,8 @@ public class Feature {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String name;
+
+    public Feature(String name) {
+        this.name = name;
+    }
 }

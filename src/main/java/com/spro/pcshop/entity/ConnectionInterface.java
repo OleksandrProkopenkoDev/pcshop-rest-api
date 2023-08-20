@@ -15,4 +15,8 @@ public class ConnectionInterface {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String name;
+
+    public ConnectionInterface(String name) {
+        this.name = name;
+    }
 }
