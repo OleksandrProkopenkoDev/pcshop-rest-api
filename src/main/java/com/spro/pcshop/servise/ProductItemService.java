@@ -2,6 +2,7 @@ package com.spro.pcshop.servise;
 
 import com.spro.pcshop.configs.UrlConfig;
 import com.spro.pcshop.dto.ItemDetailsDto;
+import com.spro.pcshop.dto.ProductItemDetailedDto;
 import com.spro.pcshop.dto.ProductItemDto;
 import com.spro.pcshop.dto.ProductItemRequestPart;
 import com.spro.pcshop.entity.*;
@@ -42,6 +43,15 @@ public class ProductItemService {
                 .map(productItemToDtoMapper())
                 .toList();
     }
+    public List<ProductItemDetailedDto> getAllProductItemsWithDetails() {
+// get Product items with images, but without ItemDetails
+        List<ProductItem> productItems = productItemRepository.findAll();
+        return productItems.stream()
+                .map(productItemToDtoDetailsMapper())
+                .toList();
+    }
+
+
 
     @Transactional
     public String addNewProductItem(ProductItemRequestPart itemRequestPart, List<MultipartFile> images) {
@@ -189,6 +199,43 @@ public class ProductItemService {
                 assembleTitle(productItem),
                 mapToUrls(productItem.getImageDataList())
         );
+    }
+
+    private Function<ProductItem, ProductItemDetailedDto> productItemToDtoDetailsMapper() {
+        return productItem -> new ProductItemDetailedDto(
+                productItem.getId(),
+                productItem.getPrice(),
+                assembleTitle(productItem),
+                mapToUrls(productItem.getImageDataList()),
+                itemDetailsToDtoMapper(productItem.getDetails())
+        );
+    }
+
+    private ItemDetailsDto itemDetailsToDtoMapper(ItemDetails details) {
+        return  ItemDetailsDto.builder()
+                .warranty(details.getWarranty())
+                .producingCountry(details.getProducingCountry())
+                .color(details.getColor())
+                .brightness(details.getBrightness())
+                .diagonal(details.getDiagonal())
+                .frequency(details.getFrequency())
+                .maxDisplayResolution(details.getMaxDisplayResolution())
+                .matrixType(details.getMatrixType())
+                .interfaces(mapInterfacesToStrings(details.getInterfaces()))
+                .features(mapFeaturesToStrings(details.getFeatures()))
+                .build();
+    }
+
+    private List<String> mapFeaturesToStrings(List<Feature> features) {
+        return features.stream()
+                .map(Feature::getName)
+                .toList();
+    }
+
+    private List<String> mapInterfacesToStrings(List<ConnectionInterface> interfaces) {
+        return interfaces.stream()
+                .map(ConnectionInterface::getName)
+                .toList();
     }
 
     private List<String> mapToUrls(List<ImageData> imageDataList) {

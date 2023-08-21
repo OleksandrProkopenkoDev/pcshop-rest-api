@@ -1,7 +1,10 @@
 package com.spro.pcshop.dto;
 
+import lombok.Builder;
+
 import java.util.List;
 
+@Builder
 public record ItemDetailsDto(
         Integer warranty,
         String producingCountry,
