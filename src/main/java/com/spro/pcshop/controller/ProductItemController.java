@@ -29,7 +29,7 @@ public class ProductItemController {
         return productItemService.getAllProductItemsWithDetails();
     }
 
-    @PostMapping( path = "monitors",consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping( path = "monitors/add",consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public String addProductItem(
             @RequestPart("productItem")ProductItemRequestPart productItemRequestPart,
             @RequestPart("images")List<MultipartFile> images){
