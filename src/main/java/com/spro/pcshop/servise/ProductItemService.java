@@ -239,10 +239,11 @@ public class ProductItemService {
     }
 
     private List<String> mapToUrls(List<ImageData> imageDataList) {
+        String port = urlConfig.getPORT().equals("0") ? "": (":"+urlConfig.getPORT());
         return imageDataList.stream()
                 .map(imageData ->
                         urlConfig.getHOST_URL() +
-                        ":"+urlConfig.getPORT()+
+                        port+
                         urlConfig.getPATH_URL() +
                         imageData.getId() +".jpg")
                 .toList();
