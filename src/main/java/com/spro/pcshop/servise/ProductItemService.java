@@ -13,7 +13,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.beans.factory.annotation.Value;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -44,45 +43,80 @@ public class ProductItemService {
                 .toList();
     }
     public List<ProductItemDetailedDto> getAllProductItemsWithDetails() {
-// get Product items with images, but without ItemDetails
+// get Product items with images with ItemDetails
         List<ProductItem> productItems = productItemRepository.findAll();
         return productItems.stream()
                 .map(productItemToDtoDetailsMapper())
                 .toList();
     }
 
-
-
     @Transactional
     public String addNewProductItem(ProductItemRequestPart itemRequestPart, List<MultipartFile> images) {
 //create new Product item
 // save this object
         ItemDetailsDto itemDetailsDto = itemRequestPart.details();
-        List<String> featuresStrings = itemDetailsDto.features();
-        if (featuresStrings == null) {
-            featuresStrings = new ArrayList<>();
-        }
-        List<Feature> features = featuresStrings
-                .stream()
-                .map(Feature::new)
-                .toList();
+
+        List<Feature> features = getFeatures(itemDetailsDto.features());
 //        save features. If feature is not saved -> save and return feature with id.
 //        If feature already saved with this name, return feature with id.
         List<Feature> featuresWithIds = saveFeatures(features);
 
-        List<String> interfacesStrings = itemDetailsDto.interfaces();
-        if (interfacesStrings == null) {
-            interfacesStrings = new ArrayList<>();
-        }
-        List<ConnectionInterface> interfaces = interfacesStrings
-                .stream()
-                .map(ConnectionInterface::new)
-                .toList();
-        //        save interfaces. If interface is not saved -> save and return interface with id.
+        List<ConnectionInterface> interfaces = getInterfaces(itemDetailsDto.interfaces());
+//        save interfaces. If interface is not saved -> save and return interface with id.
 //        If interface already saved with this name, return interface with id.
         List<ConnectionInterface> interfacesWithIds = saveInterfaces(interfaces);
 
-        List<ImageData> imageDataList = images.stream()
+        List<ImageData> imageDataList = getImageDataListFromMultipartFiles(images);
+//      save images, or try to add List<ImageData> as is, and save whole ProductItem
+        ItemDetails itemDetails = getItemDetailsFromDto(itemDetailsDto, featuresWithIds, interfacesWithIds);
+
+        Brand brand = getBrand(itemRequestPart);
+
+        ProductItem productItem = ProductItem.builder()
+                .model(itemRequestPart.model())
+                .brand(brand)
+                .price(itemRequestPart.price())
+                .details(itemDetails)
+                .imageDataList(imageDataList)
+                .build();
+
+        ProductItem saved = productItemRepository.save(productItem);
+        return "ProductItem successfully saved to DB with id [" + saved.getId() + "]";
+    }
+
+    private List<ConnectionInterface> getInterfaces(List<String> interfacesStrings) {
+        if (interfacesStrings == null) {
+            interfacesStrings = new ArrayList<>();
+        }
+        return interfacesStrings
+                .stream()
+                .map(ConnectionInterface::new)
+                .toList();
+    }
+
+    private List<Feature> getFeatures(List<String> featuresStrings) {
+        if (featuresStrings == null) {
+            featuresStrings = new ArrayList<>();
+        }
+        return featuresStrings
+                .stream()
+                .map(Feature::new)
+                .toList();
+    }
+
+    private Brand getBrand(ProductItemRequestPart itemRequestPart) {
+        Brand brand;
+        String brandName = itemRequestPart.brand();
+        if (!brandRepository.existsByName(brandName)) {
+            brand = brandRepository.save(new Brand(brandName));
+        } else {
+            brand = brandRepository.findByName(brandName).orElseThrow();
+        }
+        return brand;
+    }
+
+    private List<ImageData> getImageDataListFromMultipartFiles(List<MultipartFile> images) {
+        return images.stream()
                 .map(file -> {
                     try {
                         return ImageData.builder()
@@ -97,8 +131,10 @@ public class ProductItemService {
 
                 })
                 .toList();
-//              save images, or try to add List<ImageData> as is, and save whole ProductItem
-        ItemDetails itemDetails = ItemDetails.builder()
+    }
+
+    private ItemDetails getItemDetailsFromDto(ItemDetailsDto itemDetailsDto, List<Feature> featuresWithIds, List<ConnectionInterface> interfacesWithIds) {
+        return ItemDetails.builder()
                 .warranty(itemDetailsDto.warranty())
                 .producingCountry(itemDetailsDto.producingCountry())
                 .color(itemDetailsDto.color())
@@ -110,34 +146,12 @@ public class ProductItemService {
                 .features(featuresWithIds)
                 .interfaces(interfacesWithIds)
                 .build();
-
-
-        String brandName = itemRequestPart.brand();
-        Brand brand;
-        if (!brandRepository.existsByName(brandName)) {
-            brand = brandRepository.save(new Brand(brandName));
-        } else {
-            brand = brandRepository.findByName(brandName).orElseThrow();
-        }
-
-
-        ProductItem productItem = ProductItem.builder()
-                .model(itemRequestPart.model())
-                .brand(brand)
-                .price(itemRequestPart.price())
-                .details(itemDetails)
-                .imageDataList(imageDataList)
-                .build();
-
-        ProductItem saved = productItemRepository.save(productItem);
-        return "ProductItem successfully saved to DB with id [" + saved.getId() + "]";
     }
 
     public List<ImageData> saveImageDataList(List<ImageData> imageDataList) {
         return imageDataList.stream()
                 .map(imageDataRepository::save)
                 .toList();
-
     }
 
     public List<ConnectionInterface> saveInterfaces(List<ConnectionInterface> interfaces) {

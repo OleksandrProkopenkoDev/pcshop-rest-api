@@ -103,7 +103,6 @@ class ProductItemServiceTest {
         List<ImageData> savedImageDataList = underTest.saveImageDataList(imageDataList);
 
         assertThat(savedImageDataList).hasSize(4);
-        savedImageDataList.forEach(System.out::println);
     }
 
     @Test
@@ -123,7 +122,6 @@ class ProductItemServiceTest {
 
         // Then
         assertThat(savedInterfaces).hasSize(3);
-        savedInterfaces.forEach(System.out::println);
     }
 
     @Test
@@ -142,7 +140,5 @@ class ProductItemServiceTest {
 
         // Then
         assertThat(savedFeatures).hasSize(2);
-        savedFeatures.forEach(System.out::println);
-
     }
 }
