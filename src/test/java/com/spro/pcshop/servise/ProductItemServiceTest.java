@@ -1,6 +1,7 @@
 package com.spro.pcshop.servise;
 
 import com.spro.pcshop.dto.ItemDetailsDto;
+import com.spro.pcshop.dto.ProductItemPostRequest;
 import com.spro.pcshop.dto.ProductItemRequestPart;
 import com.spro.pcshop.entity.ConnectionInterface;
 import com.spro.pcshop.entity.Feature;
@@ -21,7 +22,6 @@ import java.util.Optional;
 import static com.spro.pcshop.util.ImageUtils.compressImage;
 import static com.spro.pcshop.util.ImageUtils.readFile;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @SpringBootTest
 class ProductItemServiceTest {
@@ -35,7 +35,7 @@ class ProductItemServiceTest {
 
 
     @Test
-    void addNewProductItem_shouldSaveProductItem(){
+    void addNewProductItemWithImagesFiles_shouldSaveProductItem(){
         List<MultipartFile> multipartFiles = new ArrayList<>();
         List<File> files = List.of(
                 new File("src/main/resources/images/monitors/hp_9FM22AA/175135466.jpg"),
@@ -45,16 +45,14 @@ class ProductItemServiceTest {
 
         );
         List<ImageData> imageDataList = new ArrayList<>();
-        files.forEach(file -> {
-            imageDataList.add(
-                    ImageData.builder()
-                            .isPrimary(false)
-                            .imageData(compressImage(readFile(file)))
-                            .type("jpg")
-                            .name(file.getName())
-                            .build()
-            );
-        });
+        files.forEach(file -> imageDataList.add(
+                ImageData.builder()
+                        .isPrimary(false)
+                        .imageData(compressImage(readFile(file)))
+                        .type("jpg")
+                        .name(file.getName())
+                        .build()
+        ));
         imageDataList.forEach(imageData -> multipartFiles.add(new MockMultipartFile(
                 imageData.getName(),
                 imageData.getName(),
@@ -81,6 +79,30 @@ class ProductItemServiceTest {
     }
 
     @Test
+    void addNewProductItemWithImagesUrls_shouldSaveProductItem(){
+        List<String> interfaces = List.of(
+                "VGA", "HDMI", "DisplayPort"
+        );
+        List<String> features = List.of(
+                "Flicker-Free","Безрамковий (Сinema screen)","Вигнутий екран"
+        );
+        ItemDetailsDto itemDetailsDto = new ItemDetailsDto(
+                12, "China", "red", 600, 23.8,
+                60,"1920*1080 FullHd", "TN", interfaces, features
+        );
+        List<String> imagesUrls = List.of(
+                "https://content1.rozetka.com.ua/goods/images/original/175135466.jpg",
+                "https://content1.rozetka.com.ua/goods/images/original/175135469.jpg",
+                "https://content2.rozetka.com.ua/goods/images/original/175135470.jpg"
+        );
+        ProductItemPostRequest itemPostRequest = new ProductItemPostRequest(
+                4500,"2517ssd", "HP", imagesUrls, itemDetailsDto
+        );
+        String response = underTest.addNewProductItem(itemPostRequest);
+
+        assertThat(response).startsWith("ProductItem successfully saved to DB with id");
+    }
+    @Test
     void saveImageDataList_shouldSaveList() {
         List<File> files = List.of(
                 new File("src/main/resources/images/monitors/hp_9FM22AA/175135466.jpg"),
@@ -90,20 +112,17 @@ class ProductItemServiceTest {
 
         );
         List<ImageData> imageDataList = new ArrayList<>();
-        files.forEach(file -> {
-            imageDataList.add(
-                    ImageData.builder()
-                            .isPrimary(false)
-                            .imageData(compressImage(readFile(file)))
-                            .type("jpg")
-                            .name(file.getName())
-                            .build()
-            );
-        });
+        files.forEach(file -> imageDataList.add(
+                ImageData.builder()
+                        .isPrimary(false)
+                        .imageData(compressImage(readFile(file)))
+                        .type("jpg")
+                        .name(file.getName())
+                        .build()
+        ));
         List<ImageData> savedImageDataList = underTest.saveImageDataList(imageDataList);
 
         assertThat(savedImageDataList).hasSize(4);
-        savedImageDataList.forEach(System.out::println);
     }
 
     @Test
@@ -123,7 +142,6 @@ class ProductItemServiceTest {
 
         // Then
         assertThat(savedInterfaces).hasSize(3);
-        savedInterfaces.forEach(System.out::println);
     }
 
     @Test
@@ -142,7 +160,5 @@ class ProductItemServiceTest {
 
         // Then
         assertThat(savedFeatures).hasSize(2);
-        savedFeatures.forEach(System.out::println);
-
     }
 }

@@ -1,10 +1,7 @@
 package com.spro.pcshop.servise;
 
 import com.spro.pcshop.configs.UrlConfig;
-import com.spro.pcshop.dto.ItemDetailsDto;
-import com.spro.pcshop.dto.ProductItemDetailedDto;
-import com.spro.pcshop.dto.ProductItemDto;
-import com.spro.pcshop.dto.ProductItemRequestPart;
+import com.spro.pcshop.dto.*;
 import com.spro.pcshop.entity.*;
 import com.spro.pcshop.repository.*;
 import lombok.AllArgsConstructor;
@@ -13,7 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -33,7 +30,7 @@ public class ProductItemService {
     private final ConnectionInterfaceRepository connectionInterfaceRepository;
     private final BrandRepository brandRepository;
     private final UrlConfig urlConfig;
-
+    private final WebClient webClient;
 
 
     public List<ProductItemDto> getAllProductItems() {
@@ -43,14 +40,77 @@ public class ProductItemService {
                 .map(productItemToDtoMapper())
                 .toList();
     }
+
     public List<ProductItemDetailedDto> getAllProductItemsWithDetails() {
-// get Product items with images, but without ItemDetails
+// get Product items with images with ItemDetails
         List<ProductItem> productItems = productItemRepository.findAll();
         return productItems.stream()
                 .map(productItemToDtoDetailsMapper())
                 .toList();
     }
 
+    @Transactional
+    public String addNewProductItem(ProductItemPostRequest productItemPostRequest) {
+
+        ItemDetailsDto itemDetailsDto = productItemPostRequest.details();
+
+        List<Feature> features = getFeatures(itemDetailsDto.features());
+        List<Feature> featuresWithIds = saveFeatures(features);
+
+        List<ConnectionInterface> interfaces = getInterfaces(itemDetailsDto.interfaces());
+        List<ConnectionInterface> interfacesWithIds = saveInterfaces(interfaces);
+
+        ItemDetails itemDetails = getItemDetailsFromDto(itemDetailsDto, featuresWithIds, interfacesWithIds);
+
+        List<ImageData> imageDataList = getImageDataListFromUrls(productItemPostRequest.images());
+//      save images, or try to add List<ImageData> as is, and save whole ProductItem
+
+        Brand brand = getBrand(productItemPostRequest);
+
+        ProductItem productItem = ProductItem.builder()
+                .model(productItemPostRequest.model())
+                .brand(brand)
+                .price(productItemPostRequest.price())
+                .details(itemDetails)
+                .imageDataList(imageDataList)
+                .build();
+
+        ProductItem saved = productItemRepository.save(productItem);
+        return "ProductItem successfully saved to DB with id [" + saved.getId() + "]";
+
+    }
+
+    private List<ImageData> getImageDataListFromUrls(List<String> images) {
+        return images.stream()
+                .map(url ->  ImageData.builder()
+                            .name(getNameFromUrl(url))
+                            .type(getTypeFromUrl(url))
+                            .imageData(compressImage(downloadImage(url)))
+                            .isPrimary(images.indexOf(url) == 0)
+                            .build()
+                )
+                .toList();
+    }
+
+    private String getTypeFromUrl(String url) {
+        // "https://content1.rozetka.com.ua/goods/images/original/175135466.jpg"
+        String[] strings = url.split("\\.");
+        return strings[strings.length - 1];
+    }
+
+    private String getNameFromUrl(String url) {
+        // "https://content1.rozetka.com.ua/goods/images/original/175135466.jpg"
+        String[] strings = url.split("/");
+        return strings[strings.length - 1];
+    }
+
+    private byte[] downloadImage(String imageUrl) {
+        return webClient.get()
+                .uri(imageUrl)
+                .retrieve()
+                .bodyToMono(byte[].class)
+                .block();
+    }
 
 
     @Transactional
@@ -58,31 +118,79 @@ public class ProductItemService {
 //create new Product item
 // save this object
         ItemDetailsDto itemDetailsDto = itemRequestPart.details();
-        List<String> featuresStrings = itemDetailsDto.features();
-        if (featuresStrings == null) {
-            featuresStrings = new ArrayList<>();
-        }
-        List<Feature> features = featuresStrings
-                .stream()
-                .map(Feature::new)
-                .toList();
+
+        List<Feature> features = getFeatures(itemDetailsDto.features());
 //        save features. If feature is not saved -> save and return feature with id.
 //        If feature already saved with this name, return feature with id.
         List<Feature> featuresWithIds = saveFeatures(features);
 
-        List<String> interfacesStrings = itemDetailsDto.interfaces();
-        if (interfacesStrings == null) {
-            interfacesStrings = new ArrayList<>();
-        }
-        List<ConnectionInterface> interfaces = interfacesStrings
-                .stream()
-                .map(ConnectionInterface::new)
-                .toList();
-        //        save interfaces. If interface is not saved -> save and return interface with id.
+        List<ConnectionInterface> interfaces = getInterfaces(itemDetailsDto.interfaces());
+//        save interfaces. If interface is not saved -> save and return interface with id.
 //        If interface already saved with this name, return interface with id.
         List<ConnectionInterface> interfacesWithIds = saveInterfaces(interfaces);
 
-        List<ImageData> imageDataList = images.stream()
+        List<ImageData> imageDataList = getImageDataListFromMultipartFiles(images);
+//      save images, or try to add List<ImageData> as is, and save whole ProductItem
+        ItemDetails itemDetails = getItemDetailsFromDto(itemDetailsDto, featuresWithIds, interfacesWithIds);
+
+        Brand brand = getBrand(itemRequestPart);
+
+        ProductItem productItem = ProductItem.builder()
+                .model(itemRequestPart.model())
+                .brand(brand)
+                .price(itemRequestPart.price())
+                .details(itemDetails)
+                .imageDataList(imageDataList)
+                .build();
+
+        ProductItem saved = productItemRepository.save(productItem);
+        return "ProductItem successfully saved to DB with id [" + saved.getId() + "]";
+    }
+
+    private List<ConnectionInterface> getInterfaces(List<String> interfacesStrings) {
+        if (interfacesStrings == null) {
+            interfacesStrings = new ArrayList<>();
+        }
+        return interfacesStrings
+                .stream()
+                .map(ConnectionInterface::new)
+                .toList();
+    }
+
+    private List<Feature> getFeatures(List<String> featuresStrings) {
+        if (featuresStrings == null) {
+            featuresStrings = new ArrayList<>();
+        }
+        return featuresStrings
+                .stream()
+                .map(Feature::new)
+                .toList();
+    }
+
+    private Brand getBrand(ProductItemPostRequest productItemPostRequest) {
+        Brand brand;
+        String brandName = productItemPostRequest.brand();
+        if (!brandRepository.existsByName(brandName)) {
+            brand = brandRepository.save(new Brand(brandName));
+        } else {
+            brand = brandRepository.findByName(brandName).orElseThrow();
+        }
+        return brand;
+    }
+
+    private Brand getBrand(ProductItemRequestPart itemRequestPart) {
+        Brand brand;
+        String brandName = itemRequestPart.brand();
+        if (!brandRepository.existsByName(brandName)) {
+            brand = brandRepository.save(new Brand(brandName));
+        } else {
+            brand = brandRepository.findByName(brandName).orElseThrow();
+        }
+        return brand;
+    }
+
+    private List<ImageData> getImageDataListFromMultipartFiles(List<MultipartFile> images) {
+        return images.stream()
                 .map(file -> {
                     try {
                         return ImageData.builder()
@@ -97,8 +205,10 @@ public class ProductItemService {
 
                 })
                 .toList();
-//              save images, or try to add List<ImageData> as is, and save whole ProductItem
-        ItemDetails itemDetails = ItemDetails.builder()
+    }
+
+    private ItemDetails getItemDetailsFromDto(ItemDetailsDto itemDetailsDto, List<Feature> featuresWithIds, List<ConnectionInterface> interfacesWithIds) {
+        return ItemDetails.builder()
                 .warranty(itemDetailsDto.warranty())
                 .producingCountry(itemDetailsDto.producingCountry())
                 .color(itemDetailsDto.color())
@@ -110,34 +220,12 @@ public class ProductItemService {
                 .features(featuresWithIds)
                 .interfaces(interfacesWithIds)
                 .build();
-
-
-        String brandName = itemRequestPart.brand();
-        Brand brand;
-        if (!brandRepository.existsByName(brandName)) {
-            brand = brandRepository.save(new Brand(brandName));
-        } else {
-            brand = brandRepository.findByName(brandName).orElseThrow();
-        }
-
-
-        ProductItem productItem = ProductItem.builder()
-                .model(itemRequestPart.model())
-                .brand(brand)
-                .price(itemRequestPart.price())
-                .details(itemDetails)
-                .imageDataList(imageDataList)
-                .build();
-
-        ProductItem saved = productItemRepository.save(productItem);
-        return "ProductItem successfully saved to DB with id [" + saved.getId() + "]";
     }
 
     public List<ImageData> saveImageDataList(List<ImageData> imageDataList) {
         return imageDataList.stream()
                 .map(imageDataRepository::save)
                 .toList();
-
     }
 
     public List<ConnectionInterface> saveInterfaces(List<ConnectionInterface> interfaces) {
@@ -185,10 +273,9 @@ public class ProductItemService {
             return "";
         }
         StringBuilder featuresString = new StringBuilder();
-        features.forEach(feature -> {
-            featuresString.append(" / ")
-                    .append(feature.getName());
-        });
+        features.forEach(feature -> featuresString
+                                        .append(" / ")
+                                        .append(feature.getName()));
         return featuresString.toString();
     }
 
@@ -212,7 +299,7 @@ public class ProductItemService {
     }
 
     private ItemDetailsDto itemDetailsToDtoMapper(ItemDetails details) {
-        return  ItemDetailsDto.builder()
+        return ItemDetailsDto.builder()
                 .warranty(details.getWarranty())
                 .producingCountry(details.getProducingCountry())
                 .color(details.getColor())
@@ -239,13 +326,15 @@ public class ProductItemService {
     }
 
     private List<String> mapToUrls(List<ImageData> imageDataList) {
-        String port = urlConfig.getPORT().equals("0") ? "": (":"+urlConfig.getPORT());
+        String port = urlConfig.getPORT().equals("0") ? "" : (":" + urlConfig.getPORT());
         return imageDataList.stream()
                 .map(imageData ->
                         urlConfig.getHOST_URL() +
-                        port+
-                        urlConfig.getPATH_URL() +
-                        imageData.getId() +".jpg")
+                                port +
+                                urlConfig.getPATH_URL() +
+                                imageData.getId() + ".jpg")
                 .toList();
     }
+
+
 }
