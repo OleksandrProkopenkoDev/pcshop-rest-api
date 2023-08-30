@@ -1,17 +1,16 @@
 package com.spro.pcshop.controller;
 
-import com.spro.pcshop.dto.ProductItemDetailedDto;
-import com.spro.pcshop.dto.ProductItemDto;
-import com.spro.pcshop.dto.ProductItemPostRequest;
-import com.spro.pcshop.dto.ProductItemRequestPart;
+import com.spro.pcshop.dto.*;
 import com.spro.pcshop.servise.ProductItemService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @AllArgsConstructor
@@ -21,6 +20,19 @@ import java.util.List;
 public class ProductItemController {
 
     private final ProductItemService productItemService;
+
+
+    @GetMapping("monitors/{id}")
+    public ResponseEntity<ProductItemDetailedDto> getProductItemsList(@PathVariable Long id){
+        Optional<ProductItemDetailedDto> optionalProductItemDetailedDto =
+                productItemService.getProductItemById(id);
+        return optionalProductItemDetailedDto
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity
+                        .notFound()
+                        .build());
+    }
+
 
     @GetMapping("monitors")
     public List<ProductItemDto> getProductItemsList(){

@@ -15,6 +15,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Function;
 
 import static com.spro.pcshop.util.ImageUtils.compressImage;
@@ -32,6 +33,25 @@ public class ProductItemService {
     private final UrlConfig urlConfig;
     private final WebClient webClient;
 
+    public Optional<ProductItemDetailedDto> getProductItemById(Long id) {
+        Optional<ProductItem> optionalProductItem = productItemRepository.findById(id);
+        ProductItem productItem;
+        if(optionalProductItem.isPresent()){
+            productItem = optionalProductItem.get();
+            return Optional.of(productItemToDetailedDto(productItem) );
+        }
+        return Optional.empty();
+    }
+
+    private ProductItemDetailedDto productItemToDetailedDto(ProductItem productItem) {
+        return new ProductItemDetailedDto(
+                productItem.getId(),
+                productItem.getPrice(),
+                assembleTitle(productItem),
+                mapToUrls(productItem.getImageDataList()),
+                itemDetailsToDtoMapper(productItem.getDetails())
+        );
+    }
 
     public List<ProductItemDto> getAllProductItems() {
 // get Product items with images, but without ItemDetails
@@ -335,6 +355,7 @@ public class ProductItemService {
                                 imageData.getId() + ".jpg")
                 .toList();
     }
+
 
 
 }
