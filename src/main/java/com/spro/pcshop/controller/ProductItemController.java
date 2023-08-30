@@ -2,6 +2,7 @@ package com.spro.pcshop.controller;
 
 import com.spro.pcshop.dto.ProductItemDetailedDto;
 import com.spro.pcshop.dto.ProductItemDto;
+import com.spro.pcshop.dto.ProductItemPostRequest;
 import com.spro.pcshop.dto.ProductItemRequestPart;
 import com.spro.pcshop.servise.ProductItemService;
 import lombok.AllArgsConstructor;
@@ -36,5 +37,13 @@ public class ProductItemController {
         log.info("New request received");
         log.info("productItem :"+productItemRequestPart);
         return productItemService.addNewProductItem(productItemRequestPart, images);
+    }
+    @PostMapping("monitors/add-by-urls")
+    public String addProductItemWithUrls(
+            @RequestBody ProductItemPostRequest productItemPostRequest
+        ){
+        log.info("New POST request received");
+        log.info("productItemRequestBody :"+productItemPostRequest);
+        return productItemService.addNewProductItem(productItemPostRequest);
     }
 }
