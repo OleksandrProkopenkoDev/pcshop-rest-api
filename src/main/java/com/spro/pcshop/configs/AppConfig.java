@@ -15,7 +15,7 @@ public class AppConfig {
     @Bean
     public WebClient webClient() {
         // Increase the buffer size to a larger value (e.g., 1 MB)
-        int bufferSizeInBytes = 1024 * 1024; // 1 MB
+        int bufferSizeInBytes = 3072 * 3072; // 1 MB
 
         ExchangeStrategies strategies = ExchangeStrategies.builder()
                 .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(bufferSizeInBytes))
