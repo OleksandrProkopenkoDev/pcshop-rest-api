@@ -2,6 +2,7 @@ package com.spro.pcshop.controller;
 
 import com.spro.pcshop.dto.*;
 import com.spro.pcshop.servise.ProductItemService;
+import io.swagger.v3.oas.annotations.Hidden;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
@@ -43,6 +44,7 @@ public class ProductItemController {
         return productItemService.getAllProductItemsWithDetails();
     }
 
+    @Hidden
     @PostMapping( path = "monitors/add",consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public String addProductItem(
             @RequestPart("productItem")ProductItemRequestPart productItemRequestPart,
