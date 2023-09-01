@@ -31,6 +31,6 @@ public class ProductItem {
 
     @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @JoinColumn(name="product_item_id", referencedColumnName = "id")
-    private List<ImageData> imageDataList;
+    private List<Image> imageList;
 
 }
