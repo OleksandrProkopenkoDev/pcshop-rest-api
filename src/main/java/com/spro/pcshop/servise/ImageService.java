@@ -1,7 +1,9 @@
 package com.spro.pcshop.servise;
 
+import com.spro.pcshop.entity.Image;
 import com.spro.pcshop.entity.ImageData;
 import com.spro.pcshop.repository.ImageDataRepository;
+import com.spro.pcshop.repository.ImageRepository;
 import com.spro.pcshop.util.ImageUtils;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -12,16 +14,16 @@ import java.util.Optional;
 @AllArgsConstructor
 public class ImageService {
 
-    private final ImageDataRepository imageDataRepository;
+    private final ImageDataRepository imagedataRepository;
 
     public byte[] getImageByUrlName(String name) {
         Long id = parseId(name);
-        if (!imageDataRepository.existsById(id)) {
+        if (!imagedataRepository.existsById(id)) {
             return new byte[0];
         }
-        Optional<ImageData> imageDataOptional = imageDataRepository.findById(id);
+        Optional<ImageData> imageDataOptional = imagedataRepository.findById(id);
          if(imageDataOptional.isPresent()){
-             return ImageUtils.decompressImage(imageDataOptional.get().getImageData());
+             return ImageUtils.decompressImage(imageDataOptional.get().getBytes());
          }else {
              return new byte[0];
          }

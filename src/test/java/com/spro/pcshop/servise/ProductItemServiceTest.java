@@ -5,6 +5,7 @@ import com.spro.pcshop.dto.ProductItemPostRequest;
 import com.spro.pcshop.dto.ProductItemRequestPart;
 import com.spro.pcshop.entity.ConnectionInterface;
 import com.spro.pcshop.entity.Feature;
+import com.spro.pcshop.entity.Image;
 import com.spro.pcshop.entity.ImageData;
 import com.spro.pcshop.repository.ConnectionInterfaceRepository;
 import com.spro.pcshop.repository.FeatureRepository;
@@ -44,20 +45,20 @@ class ProductItemServiceTest {
                 new File("src/main/resources/images/monitors/hp_9FM22AA/175135470.jpg")
 
         );
-        List<ImageData> imageDataList = new ArrayList<>();
-        files.forEach(file -> imageDataList.add(
-                ImageData.builder()
+        List<Image> imageList = new ArrayList<>();
+        files.forEach(file -> imageList.add(
+                Image.builder()
                         .isPrimary(false)
-                        .imageData(compressImage(readFile(file)))
+                        .imageData(new ImageData(compressImage(readFile(file))))
                         .type("jpg")
                         .name(file.getName())
                         .build()
         ));
-        imageDataList.forEach(imageData -> multipartFiles.add(new MockMultipartFile(
-                imageData.getName(),
-                imageData.getName(),
-                imageData.getType(),
-                imageData.getImageData()
+        imageList.forEach(image -> multipartFiles.add(new MockMultipartFile(
+                image.getName(),
+                image.getName(),
+                image.getType(),
+                image.getImageData().getBytes()
         )));
 
         List<String> interfaces = List.of(
@@ -111,18 +112,18 @@ class ProductItemServiceTest {
                 new File("src/main/resources/images/monitors/hp_9FM22AA/175135470.jpg")
 
         );
-        List<ImageData> imageDataList = new ArrayList<>();
-        files.forEach(file -> imageDataList.add(
-                ImageData.builder()
+        List<Image> imageList = new ArrayList<>();
+        files.forEach(file -> imageList.add(
+                Image.builder()
                         .isPrimary(false)
-                        .imageData(compressImage(readFile(file)))
+                        .imageData(new ImageData(compressImage(readFile(file))))
                         .type("jpg")
                         .name(file.getName())
                         .build()
         ));
-        List<ImageData> savedImageDataList = underTest.saveImageDataList(imageDataList);
+        List<Image> savedImageList = underTest.saveImageDataList(imageList);
 
-        assertThat(savedImageDataList).hasSize(4);
+        assertThat(savedImageList).hasSize(4);
     }
 
     @Test

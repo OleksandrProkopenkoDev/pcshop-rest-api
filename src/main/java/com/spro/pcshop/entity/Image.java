@@ -7,20 +7,23 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "image_data")
+@Table(name = "images")
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class ImageData {
+public class Image {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @Lob
-    @Column(name = "bytes", length = 3072)
-    private byte[] bytes;
-
-    public ImageData(byte[] bytes) {
-        this.bytes = bytes;
-    }
+    private String name;
+    private String type;
+    private boolean isPrimary;
+    @OneToOne(
+            cascade = CascadeType.ALL,
+            fetch = FetchType.LAZY
+    )
+    @JoinColumn(name="image_data_id", referencedColumnName = "id")
+    private ImageData imageData;
 }

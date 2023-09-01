@@ -5,7 +5,6 @@ import com.spro.pcshop.dto.*;
 import com.spro.pcshop.entity.*;
 import com.spro.pcshop.repository.*;
 import lombok.AllArgsConstructor;
-
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,7 +25,7 @@ import static com.spro.pcshop.util.ImageUtils.compressImage;
 public class ProductItemService {
 
     private final ProductItemRepository productItemRepository;
-    private final ImageDataRepository imageDataRepository;
+    private final ImageRepository imageRepository;
     private final FeatureRepository featureRepository;
     private final ConnectionInterfaceRepository connectionInterfaceRepository;
     private final BrandRepository brandRepository;
@@ -36,9 +35,11 @@ public class ProductItemService {
     public Optional<ProductItemDetailedDto> getProductItemById(Long id) {
         Optional<ProductItem> optionalProductItem = productItemRepository.findById(id);
         ProductItem productItem;
-        if(optionalProductItem.isPresent()){
+        if (optionalProductItem.isPresent()) {
             productItem = optionalProductItem.get();
-            return Optional.of(productItemToDetailedDto(productItem) );
+//            System.out.println("getImageList: "+productItem.getImageList());
+//            System.out.println("getBytes: "+ Arrays.toString(productItem.getImageList().get(0).getImageData().getBytes()));
+            return Optional.of(productItemToDetailedDto(productItem));
         }
         return Optional.empty();
     }
@@ -48,7 +49,7 @@ public class ProductItemService {
                 productItem.getId(),
                 productItem.getPrice(),
                 assembleTitle(productItem),
-                mapToUrls(productItem.getImageDataList()),
+                mapToUrls(productItem.getImageList()),
                 itemDetailsToDtoMapper(productItem.getDetails())
         );
     }
@@ -82,8 +83,8 @@ public class ProductItemService {
 
         ItemDetails itemDetails = getItemDetailsFromDto(itemDetailsDto, featuresWithIds, interfacesWithIds);
 
-        List<ImageData> imageDataList = getImageDataListFromUrls(productItemPostRequest.images());
-//      save images, or try to add List<ImageData> as is, and save whole ProductItem
+        List<Image> imageList = getImageDataListFromUrls(productItemPostRequest.images());
+//      save images, or try to add List<Image> as is, and save whole ProductItem
 
         Brand brand = getBrand(productItemPostRequest);
 
@@ -92,7 +93,7 @@ public class ProductItemService {
                 .brand(brand)
                 .price(productItemPostRequest.price())
                 .details(itemDetails)
-                .imageDataList(imageDataList)
+                .imageList(imageList)
                 .build();
 
         ProductItem saved = productItemRepository.save(productItem);
@@ -100,14 +101,14 @@ public class ProductItemService {
 
     }
 
-    private List<ImageData> getImageDataListFromUrls(List<String> images) {
+    private List<Image> getImageDataListFromUrls(List<String> images) {
         return images.stream()
-                .map(url ->  ImageData.builder()
-                            .name(getNameFromUrl(url))
-                            .type(getTypeFromUrl(url))
-                            .imageData(compressImage(downloadImage(url)))
-                            .isPrimary(images.indexOf(url) == 0)
-                            .build()
+                .map(url -> Image.builder()
+                        .name(getNameFromUrl(url))
+                        .type(getTypeFromUrl(url))
+                        .imageData(new ImageData(compressImage(downloadImage(url))))
+                        .isPrimary(images.indexOf(url) == 0)
+                        .build()
                 )
                 .toList();
     }
@@ -149,8 +150,8 @@ public class ProductItemService {
 //        If interface already saved with this name, return interface with id.
         List<ConnectionInterface> interfacesWithIds = saveInterfaces(interfaces);
 
-        List<ImageData> imageDataList = getImageDataListFromMultipartFiles(images);
-//      save images, or try to add List<ImageData> as is, and save whole ProductItem
+        List<Image> imageList = getImageDataListFromMultipartFiles(images);
+//      save images, or try to add List<Image> as is, and save whole ProductItem
         ItemDetails itemDetails = getItemDetailsFromDto(itemDetailsDto, featuresWithIds, interfacesWithIds);
 
         Brand brand = getBrand(itemRequestPart);
@@ -160,7 +161,7 @@ public class ProductItemService {
                 .brand(brand)
                 .price(itemRequestPart.price())
                 .details(itemDetails)
-                .imageDataList(imageDataList)
+                .imageList(imageList)
                 .build();
 
         ProductItem saved = productItemRepository.save(productItem);
@@ -209,14 +210,14 @@ public class ProductItemService {
         return brand;
     }
 
-    private List<ImageData> getImageDataListFromMultipartFiles(List<MultipartFile> images) {
+    private List<Image> getImageDataListFromMultipartFiles(List<MultipartFile> images) {
         return images.stream()
                 .map(file -> {
                     try {
-                        return ImageData.builder()
+                        return Image.builder()
                                 .name(file.getOriginalFilename())
                                 .type(file.getContentType())
-                                .imageData(compressImage(file.getBytes()))
+                                .imageData(new ImageData(compressImage(file.getBytes())))
                                 .isPrimary(images.indexOf(file) == 0)
                                 .build();
                     } catch (IOException e) {
@@ -242,9 +243,9 @@ public class ProductItemService {
                 .build();
     }
 
-    public List<ImageData> saveImageDataList(List<ImageData> imageDataList) {
-        return imageDataList.stream()
-                .map(imageDataRepository::save)
+    public List<Image> saveImageDataList(List<Image> imageList) {
+        return imageList.stream()
+                .map(imageRepository::save)
                 .toList();
     }
 
@@ -294,8 +295,8 @@ public class ProductItemService {
         }
         StringBuilder featuresString = new StringBuilder();
         features.forEach(feature -> featuresString
-                                        .append(" / ")
-                                        .append(feature.getName()));
+                .append(" / ")
+                .append(feature.getName()));
         return featuresString.toString();
     }
 
@@ -304,7 +305,7 @@ public class ProductItemService {
                 productItem.getId(),
                 productItem.getPrice(),
                 assembleTitle(productItem),
-                mapToUrls(productItem.getImageDataList())
+                mapToUrls(productItem.getImageList())
         );
     }
 
@@ -313,7 +314,7 @@ public class ProductItemService {
                 productItem.getId(),
                 productItem.getPrice(),
                 assembleTitle(productItem),
-                mapToUrls(productItem.getImageDataList()),
+                mapToUrls(productItem.getImageList()),
                 itemDetailsToDtoMapper(productItem.getDetails())
         );
     }
@@ -345,9 +346,9 @@ public class ProductItemService {
                 .toList();
     }
 
-    private List<String> mapToUrls(List<ImageData> imageDataList) {
+    private List<String> mapToUrls(List<Image> imageList) {
         String port = urlConfig.getPORT().equals("0") ? "" : (":" + urlConfig.getPORT());
-        return imageDataList.stream()
+        return imageList.stream()
                 .map(imageData ->
                         urlConfig.getHOST_URL() +
                                 port +
@@ -355,7 +356,6 @@ public class ProductItemService {
                                 imageData.getId() + ".jpg")
                 .toList();
     }
-
 
 
 }
